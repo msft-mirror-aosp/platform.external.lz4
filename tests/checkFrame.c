@@ -24,6 +24,15 @@
   */
 
   /*-************************************
+  *  Compiler specific
+  **************************************/
+  #ifdef _MSC_VER    /* Visual Studio */
+  #  pragma warning(disable : 4127)        /* disable: C4127: conditional expression is constant */
+  #  pragma warning(disable : 4146)        /* disable: C4146: minus unsigned expression */
+  #endif
+
+
+  /*-************************************
   *  Includes
   **************************************/
   #include "util.h"       /* U32 */
@@ -292,7 +301,6 @@ int main(int argc, const char** argv)
                 freeCResources(ress);
                 EXM_THROW(1, "%s: %s \n", argument, strerror(errno));
             }
-            assert (srcFile != NULL);
             err = frameCheck(ress, srcFile, bsid, blockSize);
             freeCResources(ress);
             fclose(srcFile);
