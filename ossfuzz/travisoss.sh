@@ -12,12 +12,7 @@ then
 fi
 
 # Modify the oss-fuzz Dockerfile so that we're checking out the current branch on travis.
-if [ "x${TRAVIS_PULL_REQUEST}" = "xfalse" ]
-then
-    sed -i "s@https://github.com/lz4/lz4.git@-b ${TRAVIS_BRANCH} https://github.com/lz4/lz4.git@" /tmp/ossfuzz/projects/lz4/Dockerfile
-else
-    sed -i "s@https://github.com/lz4/lz4.git@-b ${TRAVIS_PULL_REQUEST_BRANCH} https://github.com/${TRAVIS_PULL_REQUEST_SLUG}.git@" /tmp/ossfuzz/projects/lz4/Dockerfile
-fi
+sed -i "s@https://github.com/lz4/lz4.git@-b $TRAVIS_BRANCH https://github.com/lz4/lz4.git@" /tmp/ossfuzz/projects/lz4/Dockerfile
 
 # Try and build the fuzzers
 pushd /tmp/ossfuzz
