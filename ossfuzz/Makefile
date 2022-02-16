@@ -26,7 +26,7 @@
 # ##########################################################################
 
 LZ4DIR  := ../lib
-LIB_FUZZING_ENGINE ?=
+LIB_FUZZING_ENGINE ?= standaloneengine.o
 
 DEBUGLEVEL?= 1
 DEBUGFLAGS = -g -DLZ4_DEBUG=$(DEBUGLEVEL)
@@ -47,7 +47,6 @@ FUZZERS := \
 	round_trip_frame_fuzzer \
 	decompress_frame_fuzzer
 
-.PHONY: all
 all: $(FUZZERS)
 
 # Include a rule to build the static library if calling this target
@@ -59,20 +58,17 @@ $(LZ4DIR)/liblz4.a:
 	$(CC) -c $(LZ4_CFLAGS) $(LZ4_CPPFLAGS) $< -o $@
 
 # Generic rule for generating fuzzers
-ifeq ($(LIB_FUZZING_ENGINE),)
-  LIB_FUZZING_DEPS := standaloneengine.o
-else
-  LIB_FUZZING_DEPS :=
-endif
-%_fuzzer: %_fuzzer.o lz4_helpers.o fuzz_data_producer.o $(LZ4DIR)/liblz4.a $(LIB_FUZZING_DEPS)
+%_fuzzer: %_fuzzer.o lz4_helpers.o $(LZ4DIR)/liblz4.a
+	# Compile the standalone code just in case. The OSS-Fuzz code might
+	# override the LIB_FUZZING_ENGINE value to "-fsanitize=fuzzer"
+	$(CC) -c $(LZ4_CFLAGS) $(LZ4_CPPFLAGS) standaloneengine.c -o standaloneengine.o
+
+	# Now compile the actual fuzzer.
 	$(CXX) $(LZ4_CXXFLAGS) $(LZ4_CPPFLAGS) $(LDFLAGS) $(LIB_FUZZING_ENGINE) $^ -o $@$(EXT)
 
 %_fuzzer_clean:
 	$(RM) $*_fuzzer $*_fuzzer.o standaloneengine.o
 
 .PHONY: clean
-clean: compress_fuzzer_clean decompress_fuzzer_clean \
-	compress_frame_fuzzer_clean compress_hc_fuzzer_clean \
-	decompress_frame_fuzzer_clean round_trip_frame_fuzzer_clean \
-	round_trip_fuzzer_clean round_trip_hc_fuzzer_clean round_trip_stream_fuzzer_clean
+clean: compress_fuzzer_clean decompress_fuzzer_clean
 	$(MAKE) -C $(LZ4DIR) clean
