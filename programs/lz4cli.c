@@ -93,11 +93,8 @@ static unsigned displayLevel = 2;   /* 0 : no display ; 1: errors only ; 2 : dow
 ***************************************/
 #define DEFAULT_COMPRESSOR   LZ4IO_compressFilename
 #define DEFAULT_DECOMPRESSOR LZ4IO_decompressFilename
-int LZ4IO_compressFilename_Legacy(const char* input_filename, const char* output_filename, int compressionlevel, const LZ4IO_prefs_t* prefs);   /* hidden function */
-int LZ4IO_compressMultipleFilenames_Legacy(
-                            const char** inFileNamesTable, int ifntSize,
-                            const char* suffix,
-                            int compressionLevel, const LZ4IO_prefs_t* prefs);
+int LZ4IO_compressFilename_Legacy(LZ4IO_prefs_t* const prefs, const char* input_filename, const char* output_filename, int compressionlevel);   /* hidden function */
+
 
 /*-***************************
 *  Functions
@@ -395,7 +392,7 @@ int main(int argc, const char** argv)
                 if (!strcmp(argument,  "--favor-decSpeed")) { LZ4IO_favorDecSpeed(prefs, 1); continue; }
                 if (!strcmp(argument,  "--verbose")) { displayLevel++; continue; }
                 if (!strcmp(argument,  "--quiet")) { if (displayLevel) displayLevel--; continue; }
-                if (!strcmp(argument,  "--version")) { DISPLAYOUT(WELCOME_MESSAGE); goto _cleanup; }
+                if (!strcmp(argument,  "--version")) { DISPLAYOUT(WELCOME_MESSAGE); return 0; }
                 if (!strcmp(argument,  "--help")) { usage_advanced(exeName); goto _cleanup; }
                 if (!strcmp(argument,  "--keep")) { LZ4IO_setRemoveSrcFile(prefs, 0); continue; }   /* keep source file (default) */
                 if (!strcmp(argument,  "--rm")) { LZ4IO_setRemoveSrcFile(prefs, 1); continue; }
@@ -628,18 +625,10 @@ int main(int argc, const char** argv)
 #endif
     }
 
-    if (dictionary_filename) {
-        if (!strcmp(dictionary_filename, stdinmark) && IS_CONSOLE(stdin)) {
-            DISPLAYLEVEL(1, "refusing to read from a console\n");
-            exit(1);
-        }
-        LZ4IO_setDictionaryFilename(prefs, dictionary_filename);
-    }
-
     /* benchmark and test modes */
     if (mode == om_bench) {
         BMK_setNotificationLevel(displayLevel);
-        operationResult = BMK_benchFiles(inFileNames, ifnIdx, cLevel, cLevelLast, dictionary_filename);
+        operationResult = BMK_benchFiles(inFileNames, ifnIdx, cLevel, cLevelLast);
         goto _cleanup;
     }
 
@@ -647,6 +636,14 @@ int main(int argc, const char** argv)
         LZ4IO_setTestMode(prefs, 1);
         output_filename = nulmark;
         mode = om_decompress;   /* defer to decompress */
+    }
+
+    if (dictionary_filename) {
+        if (!strcmp(dictionary_filename, stdinmark) && IS_CONSOLE(stdin)) {
+            DISPLAYLEVEL(1, "refusing to read from a console\n");
+            exit(1);
+        }
+        LZ4IO_setDictionaryFilename(prefs, dictionary_filename);
     }
 
     /* compress or decompress */
@@ -661,11 +658,7 @@ int main(int argc, const char** argv)
         if (!output_filename) output_filename = stdoutmark;
     }
     else{
-#ifdef UTIL_HAS_CREATEFILELIST
         if (!recursive && !UTIL_isRegFile(input_filename)) {
-#else
-        if (!UTIL_isRegFile(input_filename)) {
-#endif
             DISPLAYLEVEL(1, "%s: is not a regular file \n", input_filename);
             exit(1);
         }
@@ -673,7 +666,7 @@ int main(int argc, const char** argv)
 
     /* No output filename ==> try to select one automatically (when possible) */
     while ((!output_filename) && (multiple_inputs==0)) {
-        if (!IS_CONSOLE(stdout) && mode != om_list) {
+        if (!IS_CONSOLE(stdout)) {
             /* Default to stdout whenever stdout is not the console.
              * Note : this policy may change in the future, therefore don't rely on it !
              * To ensure `stdout` is explicitly selected, use `-c` command flag.
@@ -747,30 +740,23 @@ int main(int argc, const char** argv)
     if (ifnIdx == 0) multiple_inputs = 0;
     if (mode == om_decompress) {
         if (multiple_inputs) {
-            const char* const dec_extension = !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION;
             assert(ifnIdx <= INT_MAX);
-            operationResult = LZ4IO_decompressMultipleFilenames(inFileNames, (int)ifnIdx, dec_extension, prefs);
+            operationResult = LZ4IO_decompressMultipleFilenames(prefs, inFileNames, (int)ifnIdx, !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION);
         } else {
-            operationResult = DEFAULT_DECOMPRESSOR(input_filename, output_filename, prefs);
+            operationResult = DEFAULT_DECOMPRESSOR(prefs, input_filename, output_filename);
         }
     } else if (mode == om_list){
         operationResult = LZ4IO_displayCompressedFilesInfo(inFileNames, ifnIdx);
     } else {   /* compression is default action */
         if (legacy_format) {
             DISPLAYLEVEL(3, "! Generating LZ4 Legacy format (deprecated) ! \n");
-            if(multiple_inputs){
-                const char* const leg_extension = !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION;
-                LZ4IO_compressMultipleFilenames_Legacy(inFileNames, (int)ifnIdx, leg_extension, cLevel, prefs);
-            } else {
-                LZ4IO_compressFilename_Legacy(input_filename, output_filename, cLevel, prefs);
-            }
+            LZ4IO_compressFilename_Legacy(prefs, input_filename, output_filename, cLevel);
         } else {
             if (multiple_inputs) {
-                const char* const comp_extension = !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION;
                 assert(ifnIdx <= INT_MAX);
-                operationResult = LZ4IO_compressMultipleFilenames(inFileNames, (int)ifnIdx, comp_extension, cLevel, prefs);
+                operationResult = LZ4IO_compressMultipleFilenames(prefs, inFileNames, (int)ifnIdx, !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION, cLevel);
             } else {
-                operationResult = DEFAULT_COMPRESSOR(input_filename, output_filename, cLevel, prefs);
+                operationResult = DEFAULT_COMPRESSOR(prefs, input_filename, output_filename, cLevel);
     }   }   }
 
 _cleanup:

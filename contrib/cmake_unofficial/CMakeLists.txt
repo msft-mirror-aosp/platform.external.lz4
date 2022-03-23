@@ -12,7 +12,6 @@
 
 set(LZ4_TOP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
-option(LZ4_BUILD_CLI "Build lz4 program" ON)
 option(LZ4_BUILD_LEGACY_LZ4C "Build lz4c progam with legacy argument support" ON)
 
 # Parse version information
@@ -107,10 +106,6 @@ if(BUILD_SHARED_LIBS)
     OUTPUT_NAME lz4
     SOVERSION "${LZ4_VERSION_MAJOR}"
     VERSION "${LZ4_VERSION_STRING}")
-  if(MSVC)
-    target_compile_definitions(lz4_shared PRIVATE
-      LZ4_DLL_EXPORT=1)
-  endif()
   list(APPEND LZ4_LIBRARIES_BUILT lz4_shared)
 endif()
 if(BUILD_STATIC_LIBS)
@@ -129,12 +124,10 @@ else()
 endif()
 
 # lz4
-if (LZ4_BUILD_CLI)
-  set(LZ4_PROGRAMS_BUILT lz4cli)
-  add_executable(lz4cli ${LZ4_CLI_SOURCES})
-  set_target_properties(lz4cli PROPERTIES OUTPUT_NAME lz4)
-  target_link_libraries(lz4cli ${LZ4_LINK_LIBRARY})
-endif()
+set(LZ4_PROGRAMS_BUILT lz4cli)
+add_executable(lz4cli ${LZ4_CLI_SOURCES})
+set_target_properties(lz4cli PROPERTIES OUTPUT_NAME lz4)
+target_link_libraries(lz4cli ${LZ4_LINK_LIBRARY})
 
 # lz4c
 if (LZ4_BUILD_LEGACY_LZ4C)
@@ -196,7 +189,7 @@ if(NOT LZ4_BUNDLED_MODE)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
   # install lz4cat and unlz4 symlinks on *nix
-  if(UNIX AND LZ4_BUILD_CLI)
+  if(UNIX)
     install(CODE "
       foreach(f lz4cat unlz4)
         set(dest \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_BINDIR}/\${f}\")
@@ -212,7 +205,7 @@ if(NOT LZ4_BUNDLED_MODE)
       install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${f}.1"
         DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
     endforeach()
-  endif(UNIX AND LZ4_BUILD_CLI)
+  endif(UNIX)
 endif(NOT LZ4_BUNDLED_MODE)
 
 # pkg-config
