@@ -34,18 +34,26 @@ LZ4DIR  = lib
 PRGDIR  = programs
 TESTDIR = tests
 EXDIR   = examples
-FUZZDIR = ossfuzz
 
-include Makefile.inc
+
+# Define nul output
+ifneq (,$(filter Windows%,$(OS)))
+EXT  = .exe
+VOID = nul
+else
+EXT  =
+VOID = /dev/null
+endif
+
 
 .PHONY: default
 default: lib-release lz4-release
 
 .PHONY: all
-all: allmost examples manuals build_tests
+all: allmost manuals
 
 .PHONY: allmost
-allmost: lib lz4
+allmost: lib lz4 examples
 
 .PHONY: lib lib-release liblz4.a
 lib: liblz4.a
@@ -67,17 +75,12 @@ examples: liblz4.a
 manuals:
 	@$(MAKE) -C contrib/gen_manual $@
 
-.PHONY: build_tests
-build_tests:
-	@$(MAKE) -C $(TESTDIR) all
-
 .PHONY: clean
 clean:
 	@$(MAKE) -C $(LZ4DIR) $@ > $(VOID)
 	@$(MAKE) -C $(PRGDIR) $@ > $(VOID)
 	@$(MAKE) -C $(TESTDIR) $@ > $(VOID)
 	@$(MAKE) -C $(EXDIR) $@ > $(VOID)
-	@$(MAKE) -C $(FUZZDIR) $@ > $(VOID)
 	@$(MAKE) -C contrib/gen_manual $@ > $(VOID)
 	@$(RM) lz4$(EXT)
 	@echo Cleaning completed
@@ -86,7 +89,7 @@ clean:
 #-----------------------------------------------------------------------------
 # make install is validated only for Linux, OSX, BSD, Hurd and Solaris targets
 #-----------------------------------------------------------------------------
-ifeq ($(POSIX_ENV),Yes)
+ifneq (,$(filter $(shell uname),Linux Darwin GNU/kFreeBSD GNU OpenBSD FreeBSD NetBSD DragonFly SunOS Haiku MidnightBSD))
 HOST_OS = POSIX
 
 .PHONY: install uninstall
@@ -127,14 +130,11 @@ test:
 	$(MAKE) -C $(TESTDIR) $@
 	$(MAKE) -C $(EXDIR) $@
 
-clangtest: CFLAGS ?= -O3
-clangtest: CFLAGS += -Werror -Wconversion -Wno-sign-conversion
-clangtest: CC = clang
 clangtest: clean
-	$(CC) -v
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(LZ4DIR)  all CC=$(CC)
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(PRGDIR)  all CC=$(CC)
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(TESTDIR) all CC=$(CC)
+	clang -v
+	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(LZ4DIR)  all CC=clang
+	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(PRGDIR)  all CC=clang
+	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(TESTDIR) all CC=clang
 
 clangtest-native: clean
 	clang -v
@@ -148,13 +148,8 @@ usan: clean
 usan32: clean
 	CFLAGS="-m32 -O3 -g -fsanitize=undefined" $(MAKE) test FUZZER_TIME="-T30s" NB_LOOPS=-i1
 
-.PHONY: staticAnalyze
 staticAnalyze: clean
 	CFLAGS=-g scan-build --status-bugs -v $(MAKE) all
-
-.PHONY: cppcheck
-cppcheck:
-	cppcheck . --force --enable=warning,portability,performance,style --error-exitcode=1 > /dev/null
 
 platformTest: clean
 	@echo "\n ---- test lz4 with $(CC) compiler ----"
@@ -177,14 +172,6 @@ gpptest gpptest32: clean
 	CC=$(CC) $(MAKE) -C $(PRGDIR)  all CFLAGS="$(CFLAGS)"
 	CC=$(CC) $(MAKE) -C $(TESTDIR) all CFLAGS="$(CFLAGS)"
 
-cxx17build : CC = "$(CXX) -Wno-deprecated"
-cxx17build : CFLAGS = -std=c++17 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Werror -pedantic
-cxx17build : clean
-	$(CXX) -v
-	CC=$(CC) $(MAKE) -C $(LZ4DIR)  all CFLAGS="$(CFLAGS)"
-	CC=$(CC) $(MAKE) -C $(PRGDIR)  all CFLAGS="$(CFLAGS)"
-	CC=$(CC) $(MAKE) -C $(TESTDIR) all CFLAGS="$(CFLAGS)"
-
 ctocpptest: LIBCC="$(CC)"
 ctocpptest: TESTCC="$(CXX)"
 ctocpptest: CFLAGS=""
@@ -194,10 +181,10 @@ ctocpptest: clean
 	CC=$(TESTCC) $(MAKE) -C $(TESTDIR) CFLAGS="$(CFLAGS)" all
 
 c_standards: clean
-	$(MAKE) clean; CFLAGS="-std=c90   -Werror -pedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
-	$(MAKE) clean; CFLAGS="-std=gnu90 -Werror -pedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
-	$(MAKE) clean; CFLAGS="-std=c99   -Werror -pedantic" $(MAKE) all
-	$(MAKE) clean; CFLAGS="-std=gnu99 -Werror -pedantic" $(MAKE) all
-	$(MAKE) clean; CFLAGS="-std=c11   -Werror" $(MAKE) all
+	CFLAGS="-std=c90   -Werror" $(MAKE) clean allmost
+	CFLAGS="-std=gnu90 -Werror" $(MAKE) clean allmost
+	CFLAGS="-std=c99   -Werror" $(MAKE) clean allmost
+	CFLAGS="-std=gnu99 -Werror" $(MAKE) clean allmost
+	CFLAGS="-std=c11   -Werror" $(MAKE) clean allmost
 
 endif
