@@ -18,6 +18,7 @@ license {
 
 cc_library {
     name: "liblz4",
+    min_sdk_version: "apex_inherit",
     apex_available: [
         "//apex_available:platform",
         "com.android.adbd",
@@ -27,6 +28,8 @@ cc_library {
     recovery_available: true,
     vendor_available: true,
     product_available: true,
+    ramdisk_available: true,
+    vendor_ramdisk_available: true,
     vndk: {
         enabled: true,
     },
