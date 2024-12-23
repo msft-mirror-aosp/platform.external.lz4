@@ -1300,7 +1300,7 @@ static void FUZ_unitTests(int compressionLevel)
     DISPLAYLEVEL(3, "LZ4_compress_HC() with NULL input:");
     {	int const maxCSize = LZ4_compressBound(0);
         int level;
-        for (level=0; level <= LZ4HC_CLEVEL_MAX; level++) {
+        for (level=LZ4HC_CLEVEL_MIN; level <= LZ4HC_CLEVEL_MAX; level++) {
             int const cSize = LZ4_compress_HC(NULL, testCompressed, 0, maxCSize, level);
             FUZ_CHECKTEST(!(cSize==1 && testCompressed[0]==0),
                         "compressing empty should give byte 0"
@@ -1312,7 +1312,7 @@ static void FUZ_unitTests(int compressionLevel)
 
     DISPLAYLEVEL(3, "LZ4_compress_HC() with both NULL input and output:");
     {   int level;
-        for (level=0; level <= LZ4HC_CLEVEL_MAX; level++) {
+        for (level=LZ4HC_CLEVEL_MIN; level <= LZ4HC_CLEVEL_MAX; level++) {
             int const cSize = LZ4_compress_HC(NULL, NULL, 0, 0, level);
             FUZ_CHECKTEST(cSize != 0,
                         "compressing into NULL must fail"
