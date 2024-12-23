@@ -1856,6 +1856,9 @@ static int LZ4HC_compress_optimal ( LZ4HC_CCtx_internal* ctx,
     if (opt == NULL) goto _return_label;
 #endif
     DEBUGLOG(5, "LZ4HC_compress_optimal(dst=%p, dstCapa=%u)", dst, (unsigned)dstCapacity);
+    if (dstCapacity == 0) return 0; /* error: invalid: dstCapacity must always be at least 1 */
+    assert(dst != NULL);
+    if (*srcSizePtr == 0) { *dst = 0; return 1; }
     *srcSizePtr = 0;
     if (limit == fillOutput) oend -= LASTLITERALS;   /* Hack for support LZ4 format restriction */
     if (sufficient_len >= LZ4_OPT_NUM) sufficient_len = LZ4_OPT_NUM-1;
