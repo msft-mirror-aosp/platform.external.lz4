@@ -994,6 +994,16 @@ static void locateBuffDiff(const void* buff1, const void* buff2, size_t size, o_
 #undef CHECK
 #define CHECK(cond, ...) { if (cond) { EXIT_MSG(__VA_ARGS__); } }
 
+static LZ4F_errorCode_t LZ4F_returnErrorCode(LZ4F_errorCodes code)
+{
+    return (LZ4F_errorCode_t)-(ptrdiff_t)code;
+}
+
+#define RETURN_ERROR(e) return LZ4F_returnErrorCode(LZ4F_ERROR_ ## e)
+
+
+/* @return : 0 on success,
+ * or LZ4F_ErrorCode */
 size_t test_lz4f_decompression_wBuffers(
           const void* cSrc, size_t cSize,
                 void* dst, size_t dstCapacity, o_scenario_e o_scenario,
@@ -1057,6 +1067,7 @@ size_t test_lz4f_decompression_wBuffers(
         if (LZ4F_getErrorCode(moreToFlush) == LZ4F_ERROR_contentChecksum_invalid) {
             if (findErrorPos) DISPLAYLEVEL(2, "checksum error detected \n");
             if (findErrorPos) locateBuffDiff(srcRef, dst, decompressedSize, o_scenario);
+            RETURN_ERROR(contentChecksum_invalid);
         }
         if (LZ4F_isError(moreToFlush)) return moreToFlush;
 
@@ -1065,7 +1076,7 @@ size_t test_lz4f_decompression_wBuffers(
         op += oSize;
         ip += iSize;
         if (o_scenario == o_noncontiguous) {
-            if (op == oend) return LZ4F_ERROR_GENERIC;  /* can theoretically happen with bogus data */
+            if (op == oend) RETURN_ERROR(GENERIC);  /* can theoretically happen with bogus data */
             op++; /* create a gap between consecutive output */
         }
         if (o_scenario==o_overwrite) op = (BYTE*)dst;   /* overwrite destination */
@@ -1073,17 +1084,19 @@ size_t test_lz4f_decompression_wBuffers(
           && (iSize == 0)) /* no input consumed */
             break;
     }
-    if (moreToFlush != 0) return LZ4F_ERROR_decompressionFailed;
+    if (moreToFlush != 0) RETURN_ERROR(decompressionFailed);
     if (totalOut) {  /* otherwise, it's a skippable frame */
         U64 const crcDecoded = XXH64_digest(&xxh64);
         if (crcDecoded != crcOrig) {
             if (findErrorPos) locateBuffDiff(srcRef, dst, decompressedSize, o_scenario);
-            return LZ4F_ERROR_contentChecksum_invalid;
+            RETURN_ERROR(contentChecksum_invalid);
     }   }
     return 0;
 }
 
 
+/* @return : 0 on success,
+ * or LZ4F_ErrorCode */
 size_t test_lz4f_decompression(const void* cSrc, size_t cSize,
                                const void* srcRef, size_t decompressedSize,
                                U64 crcOrig,
