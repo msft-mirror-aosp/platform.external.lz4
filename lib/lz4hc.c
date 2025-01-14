@@ -1427,8 +1427,8 @@ LZ4HC_compress_generic_internal (
             const dictCtx_directive dict
             )
 {
-    DEBUGLOG(5, "LZ4HC_compress_generic_internal(src=%p, srcSize=%d)",
-                src, *srcSizePtr);
+    DEBUGLOG(5, "LZ4HC_compress_generic_internal(src=%p, srcSize=%d, dstCapacity=%d)",
+                src, *srcSizePtr, dstCapacity);
 
     /* input sanitization */
     if ((U32)*srcSizePtr > (U32)LZ4_MAX_INPUT_SIZE) return 0;  /* Unsupported input size (too large or negative) */

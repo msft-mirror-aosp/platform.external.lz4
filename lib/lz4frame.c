@@ -888,10 +888,11 @@ static size_t LZ4F_makeBlock(void* dst,
                              LZ4F_blockChecksum_t crcFlag)
 {
     BYTE* const cSizePtr = (BYTE*)dst;
+    int dstCapacity = (srcSize > 1) ? (int)srcSize - 1 : 1;
     U32 cSize;
     assert(compress != NULL);
     cSize = (U32)compress(lz4ctx, (const char*)src, (char*)(cSizePtr+BHSize),
-                          (int)(srcSize), (int)(srcSize-1),
+                          (int)srcSize, dstCapacity,
                           level, cdict);
 
     if (cSize == 0 || cSize >= srcSize) {
@@ -1149,7 +1150,7 @@ size_t LZ4F_uncompressedUpdate(LZ4F_cctx* cctxPtr,
 
 /*! LZ4F_flush() :
  *  When compressed data must be sent immediately, without waiting for a block to be filled,
- *  invoke LZ4_flush(), which will immediately compress any remaining data stored within LZ4F_cctx.
+ *  invoke LZ4F_flush(), which will immediately compress any remaining data stored within LZ4F_cctx.
  *  The result of the function is the number of bytes written into dstBuffer.
  *  It can be zero, this means there was no data left within LZ4F_cctx.
  *  The function outputs an error code if it fails (can be tested using LZ4F_isError())
@@ -1163,7 +1164,8 @@ size_t LZ4F_flush(LZ4F_cctx* cctxPtr,
     BYTE* dstPtr = dstStart;
     compressFunc_t compress;
 
-    DEBUGLOG(5, "LZ4F_flush: %zu buffered bytes (saved dict size = %i)", cctxPtr->tmpInSize, (int)(cctxPtr->tmpIn - cctxPtr->tmpBuff));
+    DEBUGLOG(5, "LZ4F_flush: %zu buffered bytes (saved dict size = %i) (dstCapacity=%u)",
+            cctxPtr->tmpInSize, (int)(cctxPtr->tmpIn - cctxPtr->tmpBuff), (unsigned)dstCapacity);
     if (cctxPtr->tmpInSize == 0) return 0;   /* nothing to flush */
     RETURN_ERROR_IF(cctxPtr->cStage != 1, compressionState_uninitialized);
     RETURN_ERROR_IF(dstCapacity < (cctxPtr->tmpInSize + BHSize + BFSize), dstMaxSize_tooSmall);
