@@ -386,8 +386,7 @@ jobs:
 
     - name: ubsan
       run: |
-        make clean
-        make V=1 usan
+        make ubsan V=1
 
 
   lz4-ubsan-x86:
