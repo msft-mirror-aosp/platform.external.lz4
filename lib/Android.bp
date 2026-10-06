@@ -50,4 +50,5 @@ cc_library {
     ],
     cflags: ["-Wall", "-Werror"],
     export_include_dirs: ["."],
+    extra_include_dir_deps: ["lz4.c"],
 }
